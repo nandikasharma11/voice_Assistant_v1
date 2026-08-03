@@ -86,6 +86,13 @@ Once running, the assistant will speak `"Hello! How can I help you?"` and start 
 | **"open google"** | Opens Google homepage |
 | **"time"** | Announces the current local time |
 | **"search google for [query]"** | Searches Google for the specified query |
+| **"play [query] on youtube"** | Searches and opens YouTube results page |
+| **"search wikipedia for [topic]"** / **"tell me about [topic]"** | Fetches and speaks the Wikipedia summary |
+| **"tell a joke"** or **"joke"** | Fetches and reads a clean programmer/general joke |
+| **"set a timer for [N] seconds/minutes"** | Runs a background timer and speaks when complete |
+| **"set volume to [0-100]%"** | Changes macOS system output volume |
+| **"mute volume"** / **"unmute volume"** | Mutes or unmutes macOS system audio |
+| **"lock screen"** / **"lock system"** | Immediately locks the macOS screen/display |
 | **"open calculator"** | Launches the macOS Calculator app |
 | **"exit"** or **"stop"** | Stops the assistant and exits |
 
@@ -104,8 +111,14 @@ graph TD
     E -- Success --> F[Process command]
     E -- "Error / Unrecognized" --> G["Speak 'Sorry, I didn't catch that'"] --> D
     F --> H{Command matches?}
-    H -- "open youtube" --> I[Open webbrowser] --> D
-    H -- "search google for..." --> J[Query google in browser] --> D
+    H -- "open youtube / open google" --> I[Open Web Browser] --> D
+    H -- "search google for..." --> J[Query Google in Browser] --> D
+    H -- "play ... on youtube" --> JN[Search/Play YouTube Video] --> D
+    H -- "search wikipedia for..." --> W[Fetch & Speak Wiki Summary] --> D
+    H -- "joke" --> JK[Fetch & Read Joke] --> D
+    H -- "set timer" --> T[Start Background Thread Timer] --> D
+    H -- "volume (mute/unmute/0-100)" --> V[Adjust macOS Volume] --> D
+    H -- "lock screen" --> LS[Lock macOS Screen] --> D
     H -- "time" --> K[Announce current time] --> D
     H -- "open calculator" --> L[Launch macOS Calculator] --> D
     H -- "exit / stop" --> M["Speak 'Goodbye' & Stop"]
