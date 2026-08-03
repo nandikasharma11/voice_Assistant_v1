@@ -107,7 +107,7 @@ def run_assistant():
         # Step H: Command matches?
         
         # 1. YouTube Open
-        if "open youtube" in command:
+        if "open youtube" in command and not "play" in command:
             webbrowser.open("https://www.youtube.com")
             speak("Opening YouTube")
 
@@ -124,32 +124,26 @@ def run_assistant():
         # 4. Search Google
         elif "search google for" in command:
             query = command.replace("search google for", "").strip()
-            webbrowser.open(f"https://www.google.com/search?q={query}")
+            webbrowser.open(f"https://www.google.com/search?q={urllib.parse.quote(query)}")
             speak(f"Searching Google for {query}")
 
-        # 5. Play on YouTube
-        elif "play" in command and "on youtube" in command:
-            # e.g., "play bohemian rhapsody on youtube"
-            query = command.replace("play", "").replace("on youtube", "").strip()
-            webbrowser.open(f"https://www.youtube.com/results?search_query={urllib.parse.quote(query)}")
-            speak(f"Playing {query} on YouTube")
+        # 5. Play on YouTube / Search YouTube
+        elif "play" in command or "search youtube for" in command:
+            query = command.replace("play", "").replace("on youtube", "").replace("search youtube for", "").strip()
+            if query:
+                webbrowser.open(f"https://www.youtube.com/results?search_query={urllib.parse.quote(query)}")
+                speak(f"Searching YouTube for {query}")
+            else:
+                speak("What would you like me to play on YouTube?")
 
-        # 6. Wikipedia Search / Information Retrieval
-        elif "search wikipedia for" in command or "tell me about" in command:
-            query = command.replace("search wikipedia for", "").replace("tell me about", "").strip()
-            speak(f"Searching Wikipedia for {query}...")
-            summary = fetch_wikipedia_summary(query)
-            speak(summary)
-
-        # 7. Joke Teller
-        elif "joke" in command:
+        # 6. Joke Teller
+        elif "joke" in command or "make me laugh" in command:
             speak("Let me find a joke for you.")
             joke = fetch_joke()
             speak(joke)
 
-        # 8. Set Timer
+        # 7. Set Timer
         elif "timer" in command or "set a timer" in command:
-            # Regex to find numbers and time unit (seconds/minutes)
             match = re.search(r'(\d+)\s*(second|minute)', command)
             if match:
                 value = int(match.group(1))
@@ -160,33 +154,57 @@ def run_assistant():
                     duration = value * 60
                 
                 speak(f"Setting a timer for {value} {unit}s.")
-                # Run timer in background thread to avoid blocking the assistant
                 t = threading.Thread(target=timer_worker, args=(duration, unit))
                 t.daemon = True
                 t.start()
             else:
                 speak("I couldn't understand the duration for the timer. Please specify seconds or minutes.")
 
-        # 9. macOS System controls (Volume and Screen Lock)
-        elif "volume" in command:
-            if "mute" in command:
+        # 8. macOS System controls (Volume and Screen Lock)
+        elif "volume" in command or "louder" in command or "quieter" in command or "turn up" in command or "turn down" in command:
+            def get_mac_volume():
+                try:
+                    output = os.popen("osascript -e 'output volume of (get volume settings)'").read().strip()
+                    return int(output)
+                except Exception:
+                    return 50
+
+            if "mute" in command or "silent" in command:
                 os.system("osascript -e 'set volume with output muted'")
                 speak("Volume muted.")
             elif "unmute" in command:
                 os.system("osascript -e 'set volume without output muted'")
                 speak("Volume unmuted.")
+            elif "up" in command or "louder" in command or "increase" in command or "turn up" in command:
+                current_vol = get_mac_volume()
+                new_vol = min(100, current_vol + 10)
+                os.system(f"osascript -e 'set volume output volume {new_vol}'")
+                speak(f"Increasing volume to {new_vol} percent.")
+            elif "down" in command or "quieter" in command or "decrease" in command or "lower" in command or "turn down" in command:
+                current_vol = get_mac_volume()
+                new_vol = max(0, current_vol - 10)
+                os.system(f"osascript -e 'set volume output volume {new_vol}'")
+                speak(f"Decreasing volume to {new_vol} percent.")
             else:
-                # Search for digits in the command (e.g. "set volume to 50 percent")
                 digits = re.findall(r'\d+', command)
                 if digits:
                     level = int(digits[0])
-                    # Bound level to 0-100 range
                     level = max(0, min(100, level))
-                    # macOS volume scale is 0 to 7 (AppleScript is 0 to 100)
                     os.system(f"osascript -e 'set volume output volume {level}'")
                     speak(f"Volume set to {level} percent.")
                 else:
-                    speak("Please specify a volume level from zero to one hundred percent.")
+                    speak("Please specify a volume level, or say volume up or down.")
+
+        # 9. macOS Screen Brightness Control
+        elif "brightness" in command or "dimmer" in command or "brighter" in command or "dim" in command:
+            if "up" in command or "brighter" in command or "increase" in command:
+                speak("Increasing brightness.")
+                os.system("osascript -e 'tell application \"System Events\" to key code 145'")
+            elif "down" in command or "dimmer" in command or "decrease" in command or "dim" in command:
+                speak("Decreasing brightness.")
+                os.system("osascript -e 'tell application \"System Events\" to key code 144'")
+            else:
+                speak("Please say increase brightness or decrease brightness.")
 
         elif "lock system" in command or "lock screen" in command:
             speak("Locking screen.")
@@ -201,6 +219,26 @@ def run_assistant():
         elif "exit" in command or "stop" in command:
             speak("Goodbye!")
             break
+
+        # 12. Wikipedia Search / Informational Search (Fallback for "what is", "who is", "tell me about")
+        elif any(phrase in command for phrase in ["search wikipedia for", "tell me about", "what is", "who is", "define"]):
+            query = command
+            for phrase in ["search wikipedia for", "tell me about", "what is", "who is", "define"]:
+                query = query.replace(phrase, "")
+            query = query.strip()
+            
+            if query:
+                speak(f"Searching Wikipedia for {query}...")
+                summary = fetch_wikipedia_summary(query)
+                speak(summary)
+            else:
+                speak("What would you like me to tell you about?")
+
+        # 13. General Google Search fallback (if no other command matches and they spoke something)
+        else:
+            print(f"Command not matched to action: {command}")
+            webbrowser.open(f"https://www.google.com/search?q={urllib.parse.quote(command)}")
+            speak(f"I didn't recognize that command, so I am searching Google for {command}.")
 
 if __name__ == "__main__":
     run_assistant()
