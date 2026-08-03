@@ -17,7 +17,11 @@ def take_command():
     with sr.Microphone() as source:
         print("Listening...")
         r.adjust_for_ambient_noise(source)
-        audio = r.listen(source)
+        try:
+            audio = r.listen(source, timeout=5, phrase_time_limit=8)
+        except sr.WaitTimeoutError:
+            # Return empty string to loop back silently if no speech is detected
+            return ""
 
     try:
         # Step E: Convert Speech to Text
