@@ -102,11 +102,11 @@ graph TD
     C --> D[Listen to microphone input via SpeechRecognition]
     D --> E{Convert Speech to Text}
     E -- Success --> F[Process command]
-    E -- Error / Unrecognized --> G[Speak 'Sorry, I didn't catch that'] --> D
+    E -- "Error / Unrecognized" --> G["Speak 'Sorry, I didn't catch that'"] --> D
     F --> H{Command matches?}
     H -- "open youtube" --> I[Open webbrowser] --> D
     H -- "search google for..." --> J[Query google in browser] --> D
     H -- "time" --> K[Announce current time] --> D
     H -- "open calculator" --> L[Launch macOS Calculator] --> D
-    H -- "exit" / "stop" --> M[Speak 'Goodbye' & Stop]
+    H -- "exit / stop" --> M["Speak 'Goodbye' & Stop"]
 ```
